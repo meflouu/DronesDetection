@@ -1,9 +1,11 @@
 # DronesDetection
 
 ## Background
-A background on what I did. This Tuesday I went out with @Niko R. to the test field and we took two video recordings of two types of drones, DJI phantom and another bigger one that I don't remember the name. The motivation is to calculate the (x, y) surface distance with camera in real time, not to confuse it with the depth distance (z), which the camera is not good at.
+We took two video recordings of two types of drones, DJI phantom and another bigger industrial drone. The motivation is to calculate the (x, y) surface distance with camera in real time, not to confuse it with the depth distance (z), which the camera is not good at.
 
 The idea is to detect the drone and segment the background out somehow and find the center point of the object detected. Then calculate the distance to the middle point of the camera stream, apply some transformation and get the distance in both axis in some unit of measurement. I choose to work with centimeters so everything you see either in the plot, the frame, the mask or the vector is all in cm unless I specify otherwise, for instance the altitude is in meters in the text frame.
+
+The motivation behind this work is to estimate the aerial position of the drone with a higher accuracy then what current GPS sensor can provide. So we will merge this camera solution with some optical distance lasers to get the flying height distance.
 
 ## What was pre-processed
 - *The video size* was initially in 4k (3840 x 2160 x 3) at 60fps. There's absolutely no way to do real-time processing of 24M frames multiple times in 0.016s each frame and not buffer. I donwsampled and down-framed the video down to (640 x 360 x 3) at 30 fps. Which was enough to detect the drones all the time. However, there's information loss and the video gets slightly darker at each downsampling. This process can also be done execution time but it is very computationally heavy so I did it offline before running the program.
