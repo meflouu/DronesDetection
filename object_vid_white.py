@@ -6,10 +6,6 @@ from matplotlib import style
 from time import time
 import random
 
-## TODO
-# Done
-
-
 def outline(w, h, center, frame):
 	cv2.line(frame, (0, h//2), (w, h//2), (255,255,255), 1)					# horizontal x axis
 	cv2.line(frame, (w//2, 0), (w//2, h), (255,255,255), 1)					# vertical y axis
@@ -98,7 +94,6 @@ def main():
 			altitude += 5.2 + random.uniform(0.6, 0.1612)
 		elif i >= 2300 and i <= 2550 and altitude > 180:
 			altitude -= 11.5 + random.uniform(0.01, 1)
-		print("%.9f \t %i \t %i \t %.14f \t %.11f" % ( altitude, cX, cY, cY*0.1*altitude, cX*1.2*altitude))
 
 		_, frame = cap.read()
 		hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -198,68 +193,3 @@ def main():
 
 main()
 
-# if False:
-#     _, frame = cap.read()
-#     frame = cv2.resize(frame, (0,0), fx=0.5, fy=0.5)
-#     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-#     mask = cv2.inRange(hsv, lower_limit, upper_limit)
-#     mask = cv2.erode(mask,kernel,iterations = 1)
-#     mask = cv2.dilate(mask,kernel,iterations = 1)
-
-#       # calculations
-#       dis_x = (cX-320)//(1000//altitude)
-#       dis_y = (180-cY)//(1000//altitude)
-
-#       dis_display = "x: " + str(dis_x) + "cm " + "| y: " +  str(dis_y) + "cm"
-
-#       # put text and highlight the center
-#       cv2.circle(frame, (cX, cY), 5, (255, 255, 255), -1)
-#       cv2.putText(frame, dis_display, (cX - 25, cY - 25),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-#       cv2.arrowedLine(frame, (cX,cY), center, (0,0,255), 2)
-
-
-#       print(cX-320, 180-cY)
-
-#       # xs.append(float(cX))
-#       # ys.append(float(cY))
-
-#       # plt.axis([-640, 640, -360, 360])
-#       # plt.scatter(cX-640, 360-cY)
-#       # plt.pause(0.033)
-#       # plt.show()
-#       # ani1 = animation.FuncAnimation(fig, animate, interval=30)
-#       # plt.show()
-
-
-
-#     result = cv2.bitwise_and(frame, frame, mask=mask)
-
-#     # convert the grayscale image to binary image
-#     # print(len(result.shape))
-#     # gray_image = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
-#     # ret,thresh = cv2.threshold(gray_image,127,255,0)
-#     # M = cv2.moments(thresh)
-
-#     # # # calculate x,y coordinate of center
-#     # if M["m00"] != 0:
-#     #   cX = int(M["m10"] / M["m00"])
-#     #   cY = int(M["m01"] / M["m00"])
-#     #   # put text and highlight the center
-#     #   cv2.circle(result, (cX, cY), 5, (255, 255, 255), -1)
-#     #   cv2.putText(result, "centroid", (cX - 25, cY - 25),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-
-
-
-#     cv2.imshow("frame", frame)
-#     cv2.imshow("mask", mask)
-#     cv2.imshow("result", result)
-
-#     key = cv2.waitKey(30)
-#     if key == 27:
-#         break
-#     elif key == 100:	# letter 'd'
-#     	altitude = int(input("New altitude: "))
-
-# cap.release()
-# cv2.destroyAllWindows()
