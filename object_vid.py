@@ -1,0 +1,261 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import style
+from time import time
+import random
+
+## TODO
+# Done
+
+
+def outline(w, h, center, frame):
+	cv2.line(frame, (0, h//2), (w, h//2), (255,255,255), 1)					# horizontal x axis
+	cv2.line(frame, (w//2, 0), (w//2, h), (255,255,255), 1)					# vertical y axis
+	cv2.arrowedLine(frame, center, (w//2+30, h//2), (0,255,255), 1)
+	cv2.arrowedLine(frame, center, (w//2, h//2-30), (0,255,255), 1)
+
+
+def distance(x, y, altitude):
+	relative_x = altitude * x / 1000
+	relative_y = altitude * y / 1000
+	dis_display = "x: {:.1f}cm, y: {:.1f}cm".format(relative_x, relative_y)
+	return dis_display
+
+
+def vector(w, h, x, y, df = 0.3, altitude=1):
+	return (w//2 + int(x*df),  h//2 - int(y*df))
+
+
+def main():
+	style.use('seaborn')
+	cap = cv2.VideoCapture('big_third.mp4')
+
+	# kernel = np.ones((1,1),np.uint8)
+	lower_limit = np.array([0, 0, 0])
+	upper_limit = np.array([82, 255, 255])
+
+	w = int(cap.get(3))  						# width: 	640    	(/2 = 320)
+	h = int(cap.get(4)) 						# height: 360			(/2 = 180)
+	center = (w//2, h//2) 					# (320, 180)
+
+	# altitude
+	# 0000  150   810    1980   2310
+	# 400cm 400cm 5000cm 5000cm 600cm
+	altitude = 400
+
+	# plot starting point but this is not the right way
+	x = [113, 113]
+	y = [-175, -175]
+	z = [altitude, altitude]
+
+	# interval
+	interval = 750
+
+	# plot figure
+	fig2 = plt.figure()
+	fig = plt.figure()
+
+	# fig3d
+	ax = Axes3D(fig)
+	ax.set_xlim3d(-interval, interval)
+	ax.set_ylim3d(-interval, interval)
+	ax.set_zlim3d(0, altitude*2)
+	line,  = ax.plot(x,y,z, linewidth=1)
+
+	# fig2d
+	ax2 = fig2.add_subplot(1,1,1)
+	ax2.set_xlim(-interval, interval)
+	ax2.set_ylim(-interval, interval)
+	line2, = ax2.plot(x,y, linewidth=1)
+
+	# window position and size
+	fig.canvas.manager.window.wm_geometry("+%d+%d" % (w, h+40))
+	fig.set_size_inches(6.4, 3.4, forward=True)
+	fig2.canvas.manager.window.wm_geometry("+%d+%d" % (0, 2*h+40))
+	fig2.set_size_inches(5, 2.8, forward=True)
+
+	plt.show(block=False)
+
+	# pre alloacted lists
+	# x = [None] * int(5000)
+	# y = [None] * int(5000)
+	# z = [None] * int(5000)
+
+	t = time()
+	i = 0						# for fps
+	n = 0 					# for plotting with preallocation
+	frames = ""
+	cX = 1
+	cY = 1
+
+	while True:
+		print(i)
+		altitude = altitude + random.uniform(-.15, 0.15)
+		if i > 150 and i < 810 and altitude < 5000:
+			altitude += 7 - random.uniform(0.01, 0.62)
+		elif i > 1980 and i < 2310 and altitude > 600:
+			altitude -= 13 + random.uniform(0.01, 0.66)
+		print("%.9f \t %i \t %i \t %.14f \t %.11f" % ( altitude, cX, cY, cY*0.1*altitude, cX*1.2*altitude))
+
+		_, frame = cap.read()
+
+		# mask
+		mask = cv2.inRange(frame, lower_limit, upper_limit)
+		# mask = cv2.dilate(mask,kernel,iterations = 1)
+
+		# result
+		result = cv2.bitwise_and(frame, frame, mask=mask)
+
+		_, thresh = cv2.threshold(mask, 40, 255, 0)
+		_, contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+		if len(contours) != 0:
+			outline(w, h, center, frame)
+			# outline(w, h, center, result)
+
+			# biggest contour
+			c = max(contours, key = cv2.contourArea)
+			xc,yc,wc,hc = cv2.boundingRect(c)
+			cv2.rectangle(frame,(xc,yc),(xc+wc,yc+hc), (250,206,135), 1)
+
+			# find centroid
+			M = cv2.moments(c)
+			if M["m00"] != 0:
+				cX = int(M["m10"] / M["m00"])
+				cY = int(M["m01"] / M["m00"])
+				cv2.circle(frame, (cX, cY), 1, (255, 255, 255), -1)		# -1 "negative linewidth" is for fill
+
+			# distance calucations
+			dis_display = distance(cX-w//2, h//2-cY, altitude)
+			cv2.putText(result, dis_display, (cX - 25, cY - 25),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+			# distance vector
+			towards_center = vector(w, h, cX-w//2, h//2-cY, df=0.7)				# df: diminishing factor [0, 1]
+			cv2.arrowedLine(result, (cX,cY), towards_center, (0,255,255), 1)
+
+			# plot
+			x.append(altitude * (cX-w//2) / 1000)
+			y.append(altitude * (h//2-cY) / 1000)
+			z.append(altitude)
+			line.set_xdata(x)
+			line.set_ydata(y)
+			line.set_3d_properties(z)
+
+			line2.set_xdata(x)
+			line2.set_ydata(y)
+
+			# x[n] = cX-w//2
+			# y[n] = h//2-cY
+			# z[n] = altitude
+			# line.set_xdata(x[:n+1])
+			# line.set_ydata(y[:n+1])
+			# line.set_3d_properties(z[:n+1])
+			# n += 1
+
+			ax.set_zlim3d(max(0, altitude-1000) , altitude+1000)
+
+			fig.canvas.draw()
+			fig.canvas.flush_events()
+
+			fig2.canvas.draw()
+			fig2.canvas.flush_events()
+
+
+		# frames text
+		cv2.putText(frame, frames, (5, 15),cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+		cv2.putText(frame, "altitude: " + str(altitude/100)[:5] + "m" , (5, 30),cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+
+		# displaying
+		final_img = cv2.hconcat((frame, result))
+		# cv2.imshow("result", result)
+		# cv2.moveWindow("result", w, 20)
+		cv2.imshow("mask", mask)
+		cv2.moveWindow("mask", 0, h+20)
+		cv2.imshow("frame", final_img)
+
+		key = cv2.waitKey(1)
+		if key == 27:
+			break
+
+		# fps measurements
+		if i%30 == 0 :
+			frames = "FPS: {0:<4.2f} (without realtime plotting ~ 23)".format(i/(time() - t))
+
+		i += 1
+
+	# outside while loop
+	plt.show()  # to hold the plot at the end
+
+	cap.release()
+	cv2.destroyAllWindows()
+
+
+main()
+
+# if False:
+#     _, frame = cap.read()
+#     frame = cv2.resize(frame, (0,0), fx=0.5, fy=0.5)
+#     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+#     mask = cv2.inRange(hsv, lower_limit, upper_limit)
+#     mask = cv2.erode(mask,kernel,iterations = 1)
+#     mask = cv2.dilate(mask,kernel,iterations = 1)
+
+#       # calculations
+#       dis_x = (cX-320)//(1000//altitude)
+#       dis_y = (180-cY)//(1000//altitude)
+
+#       dis_display = "x: " + str(dis_x) + "cm " + "| y: " +  str(dis_y) + "cm"
+
+#       # put text and highlight the center
+#       cv2.circle(frame, (cX, cY), 5, (255, 255, 255), -1)
+#       cv2.putText(frame, dis_display, (cX - 25, cY - 25),cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+#       cv2.arrowedLine(frame, (cX,cY), center, (0,0,255), 2)
+
+
+#       print(cX-320, 180-cY)
+
+#       # xs.append(float(cX))
+#       # ys.append(float(cY))
+
+#       # plt.axis([-640, 640, -360, 360])
+#       # plt.scatter(cX-640, 360-cY)
+#       # plt.pause(0.033)
+#       # plt.show()
+#       # ani1 = animation.FuncAnimation(fig, animate, interval=30)
+#       # plt.show()
+
+
+
+#     result = cv2.bitwise_and(frame, frame, mask=mask)
+
+#     # convert the grayscale image to binary image
+#     # print(len(result.shape))
+#     # gray_image = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
+#     # ret,thresh = cv2.threshold(gray_image,127,255,0)
+#     # M = cv2.moments(thresh)
+
+#     # # # calculate x,y coordinate of center
+#     # if M["m00"] != 0:
+#     #   cX = int(M["m10"] / M["m00"])
+#     #   cY = int(M["m01"] / M["m00"])
+#     #   # put text and highlight the center
+#     #   cv2.circle(result, (cX, cY), 5, (255, 255, 255), -1)
+#     #   cv2.putText(result, "centroid", (cX - 25, cY - 25),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
+
+
+#     cv2.imshow("frame", frame)
+#     cv2.imshow("mask", mask)
+#     cv2.imshow("result", result)
+
+#     key = cv2.waitKey(30)
+#     if key == 27:
+#         break
+#     elif key == 100:	# letter 'd'
+#     	altitude = int(input("New altitude: "))
+
+# cap.release()
+# cv2.destroyAllWindows()
